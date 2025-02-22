@@ -11,8 +11,8 @@ int main(){
 	int server_fd, new_socket;
 	struct sockaddr_in adress;
 	int opt = 1;
-	int addrlen = sizeof(address);
-	int addrlen = sizeof(address);
+	int addrlen = sizeof(adress);
+	int addrlen = sizeof(adress);
 	char buffer[BUFFER_SIZE] = {0};
 
 	// Create a socket file descriptor
