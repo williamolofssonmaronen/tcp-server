@@ -1,0 +1,25 @@
+# Ignore CMake build directories
+/build/
+/cmake-build-*/
+
+# Ignore CMake temporary files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# Ignore compiled binaries and libraries
+*.o
+*.obj
+*.so
+*.dll
+*.exe
+*.out
+*.a
+*.lib
+
+# Ignore IDE project files
+.idea/
+.vscode/
+*.sln
+*.vcxproj*
