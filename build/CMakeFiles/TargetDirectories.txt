@@ -1,0 +1,3 @@
+/home/maronen/git/tcp-server/build/CMakeFiles/main.dir
+/home/maronen/git/tcp-server/build/CMakeFiles/edit_cache.dir
+/home/maronen/git/tcp-server/build/CMakeFiles/rebuild_cache.dir
