@@ -1,0 +1,17 @@
+% Define server parameters
+server_ip = '100.100.63.111'; % Change if needed
+server_port = 12345; % Must match the server's port
+
+% Create a TCP/IP client
+tcp_client = tcpclient(server_ip, server_port);
+
+disp('Connected to server');
+
+% Loop to continuously receive and print messages
+while true
+    if tcp_client.BytesAvailable > 0
+        data = readline(tcp_client); % Read incoming message
+        disp(['Received: ', char(data)]);
+    end
+    pause(0.5); % Small delay to avoid busy-waiting
+end
