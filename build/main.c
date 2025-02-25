@@ -44,20 +44,20 @@ int main()
 		perror("listening fails!");
 	}
 	// Prints messages indicating that the server has not failed and is actively listening in the specified port(8080)
-	printf("Server listening on port %d/n", PORT);
+	printf("Server listening on port %d\n", PORT);
 
 	if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0) {
 		perror("Accepted!");
 		exit(EXIT_FAILURE);
 	}
-	printf("Connection accepted/n");
+	printf("Connection accepted\n");
 
 	// Read data from the client and print it
 	// Declare a signed size type variable for the number of bytes read
 
 	ssize_t valread;
 	while ((valread=read(new_socket, buffer, BUFFER_SIZE)) > 0) {
-		printf("Client %s", buffer);
+		printf("Client %s\n", buffer);
 		memset(buffer, 0, sizeof(buffer));
 	}
 	close(server_fd);
