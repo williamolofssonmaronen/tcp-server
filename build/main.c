@@ -14,7 +14,8 @@ int main()
 	int opt = 1;
 	int addrlen = sizeof(address);
 	char buffer[BUFFER_SIZE] = {0};
-	
+	char* message = "Hello Client!";
+
 	// Create a socket file descriptor
 	if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
 		perror("socket failed");
@@ -51,6 +52,8 @@ int main()
 		exit(EXIT_FAILURE);
 	}
 	printf("Connection accepted\n");
+
+	send(new_socket,message, strlen(message),0);
 
 	// Read data from the client and print it
 	// Declare a signed size type variable for the number of bytes read
