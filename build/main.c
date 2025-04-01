@@ -1,70 +1,83 @@
 #include <arpa/inet.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #define PORT 8080
-#define BUFFER_SIZE 1024
+#define BUFFER_SIZE 10240
+#define RECV_INTERVAL 1 // 2 seconds receive window
+#define SEND_INTERVAL 1 // 2 seconds send window
 
 int main() {
-  int server_fd, new_socket;
-  struct sockaddr_in address;
-  int opt = 1;
-  int addrlen = sizeof(address);
-  char buffer[BUFFER_SIZE] = {0};
-  char *message = "Hello Client!";
+  int server_fd, client_fd;
+  struct sockaddr_in server_addr, client_addr;
+  socklen_t client_len = sizeof(client_addr);
+  char buffer[BUFFER_SIZE];
 
-  // Create a socket file descriptor
-  if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
-    perror("socket failed");
-    exit(EXIT_FAILURE);
-  }
-  // Set socket options
-  if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt,
-                 sizeof(opt))) {
-    perror("setsockopt");
-    exit(EXIT_FAILURE);
+  // Create socket
+  if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+    perror("Socket creation failed");
+    return 1;
   }
 
-  // Setup the server address
-  // Set the address family to AF_INET (IPv4)
-  address.sin_family = AF_INET;
+  // Define server address
+  server_addr.sin_family = AF_INET;
+  server_addr.sin_addr.s_addr = INADDR_ANY;
+  server_addr.sin_port = htons(PORT);
 
-  // ACccepting connection on any availabe interface / communication mean
-  address.sin_addr.s_addr = INADDR_ANY;
-
-  // Set the port number in any ntework byte order / PORT 8080
-  address.sin_port = htons(PORT);
-
-  if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
-    perror("bind fails!");
-    exit(EXIT_FAILURE);
+  // Bind socket to port
+  if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) <
+      0) {
+    perror("Bind failed");
+    return 1;
   }
-  if (listen(server_fd, 3) < 0) {
-    perror("listening fails!");
+
+  // Listen for connections
+  if (listen(server_fd, 1) < 0) {
+    perror("Listen failed");
+    return 1;
   }
-  // Prints messages indicating that the server has not failed and is actively
-  // listening in the specified port(8080)
-  printf("Server listening on port %d\n", PORT);
 
-  if ((new_socket = accept(server_fd, (struct sockaddr *)&address,
-                           (socklen_t *)&addrlen)) < 0) {
-    perror("Accepted!");
-    exit(EXIT_FAILURE);
+  printf("Server listening on port %d...\n", PORT);
+
+  // Accept client connection
+  if ((client_fd = accept(server_fd, (struct sockaddr *)&client_addr,
+                          &client_len)) < 0) {
+    perror("Accept failed");
+    return 1;
   }
-  printf("Connection accepted\n");
 
-  send(new_socket, message, strlen(message), 0);
+  printf("Client connected. Starting TDD...\n");
 
-  // Read data from the client and print it
-  // Declare a signed size type variable for the number of bytes read
-
-  ssize_t valread;
-  while ((valread = read(new_socket, buffer, BUFFER_SIZE)) > 0) {
-    printf("Client %s\n", buffer);
-    memset(buffer, 0, sizeof(buffer));
+  int cycle = 0;
+  while (1) {
+    if (cycle % 2 == 0) { // Even cycle: RECEIVE
+      memset(buffer, 0, BUFFER_SIZE);
+      ssize_t bytes_read = recv(client_fd, buffer, BUFFER_SIZE, 0);
+      if (bytes_read > 0) {
+        printf("Received: %s", buffer);
+      } else if (bytes_read == 0) {
+        printf("Client disconnected.\n");
+        break;
+      } else {
+        perror("Receive failed");
+        break;
+      }
+      sleep(RECV_INTERVAL);
+    } else { // Odd cycle: SEND
+      snprintf(buffer, BUFFER_SIZE, "Server response at time: %ld\n",
+               time(NULL));
+      if (send(client_fd, buffer, strlen(buffer), 0) < 0) {
+        perror("Send failed");
+        break;
+      }
+      printf("Sent: %s", buffer);
+      sleep(SEND_INTERVAL);
+    }
+    cycle++;
   }
+  close(client_fd);
   close(server_fd);
   return 0;
 }
