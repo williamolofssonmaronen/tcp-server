@@ -5,7 +5,7 @@
 #include <unistd.h>
 
 #define PORT 8080
-#define BUFFER_SIZE 10240
+#define BUFFER_SIZE 8192
 #define RECV_INTERVAL 1 // 2 seconds receive window
 #define SEND_INTERVAL 1 // 2 seconds send window
 
