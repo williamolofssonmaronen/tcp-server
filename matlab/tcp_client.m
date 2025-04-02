@@ -1,16 +1,27 @@
 % Define server details
-serverIP = '127.0.0.1'; % Change to the server's IP address
+clear client;
+serverIP = "localhost"; % Change to the server's IP address
 serverPort = 8080;    % Change to the server's port
 
 % Create a TCP/IP client
 client = tcpclient(serverIP, serverPort);
 
-% Define the message to send
-message = 'Hello, Server!';
-
 % Send the message
-while true
+while(true)
+    message = 'transmit';
     write(client, uint8(message));
+    response = read(client, client.NumBytesAvailable, 'uint8');
+    disp(char(response));
+    pause(1)
+    message = 'stop';
+    write(client, uint8(message));
+    response = read(client, client.NumBytesAvailable, 'uint8');
+    disp(char(response));
+    pause(1);
+    message = 'recieve';
+    write(client, uint8(message));
+    response = read(client, client.NumBytesAvailable, 'uint8');
+    disp(char(response));
     pause(1);
 end
 % Optionally, wait for a response (if the server sends one)
@@ -19,4 +30,4 @@ end
 % disp(char(response));
 
 % Close the connection
-clear client;
+%clear client;
