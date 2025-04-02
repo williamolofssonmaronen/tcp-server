@@ -1,13 +1,11 @@
 #include <arpa/inet.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include <time.h>
 #include <unistd.h>
 
 #define PORT 8080
 #define BUFFER_SIZE 8192
-#define RECV_INTERVAL 1 // 2 seconds receive window
-#define SEND_INTERVAL 1 // 2 seconds send window
 
 int main() {
   int server_fd, client_fd;
@@ -48,34 +46,60 @@ int main() {
     return 1;
   }
 
-  printf("Client connected. Starting TDD...\n");
+  printf("Client connected. Awaiting ...\n");
 
-  int cycle = 0;
+  bool transmission = false;
   while (1) {
-    if (cycle % 2 == 0) { // Even cycle: RECEIVE
-      memset(buffer, 0, BUFFER_SIZE);
-      ssize_t bytes_read = recv(client_fd, buffer, BUFFER_SIZE, 0);
-      if (bytes_read > 0) {
-        printf("Received: %s", buffer);
-      } else if (bytes_read == 0) {
-        printf("Client disconnected.\n");
-        break;
+    memset(buffer, 0, BUFFER_SIZE);
+    ssize_t bytes_read = recv(client_fd, buffer, BUFFER_SIZE, 0);
+    if (bytes_read > 0) {
+      printf("Received: %s\n", buffer);
+      if (strcmp(buffer, "transmit") == 0) {
+        transmission = true;
+        snprintf(buffer, BUFFER_SIZE, "Starting transmission");
+        if (send(client_fd, buffer, strlen(buffer), 0) < 0) {
+          perror("Send failed");
+          break;
+        }
+        printf("Starting transmission...\n");
+        // Upload data to ram and start loop transmission
+      } else if (strcmp(buffer, "stop") == 0) {
+        snprintf(buffer, BUFFER_SIZE, "Stopped transmission");
+        if (transmission == false) {
+          perror("Not transmitting");
+          break;
+        } else if (send(client_fd, buffer, strlen(buffer), 0) < 0) {
+          perror("Send failed");
+          break;
+        }
+        printf("Transmission stopped\n");
+        transmission = false;
+        // Stop the transmission loop
+      } else if (strcmp(buffer, "recieve") == 0) {
+        snprintf(buffer, BUFFER_SIZE, "Starting recieving");
+        if (transmission == true) {
+          perror("Transmitting");
+          break;
+        } else if (send(client_fd, buffer, strlen(buffer), 0) < 0) {
+          perror("Send failed");
+          break;
+        }
+        printf("Starting recieving\n");
       } else {
-        perror("Receive failed");
-        break;
+        snprintf(buffer, BUFFER_SIZE, "Unkown command");
+        if (send(client_fd, buffer, strlen(buffer), 0) < 0) {
+          perror("Send failed");
+          break;
+        }
+        perror("Unkown command\n");
       }
-      sleep(RECV_INTERVAL);
-    } else { // Odd cycle: SEND
-      snprintf(buffer, BUFFER_SIZE, "Server response at time: %ld\n",
-               time(NULL));
-      if (send(client_fd, buffer, strlen(buffer), 0) < 0) {
-        perror("Send failed");
-        break;
-      }
-      printf("Sent: %s", buffer);
-      sleep(SEND_INTERVAL);
+    } else if (bytes_read == 0) {
+      printf("Client disconnected.\n");
+      break;
+    } else {
+      perror("Receive failed");
+      break;
     }
-    cycle++;
   }
   close(client_fd);
   close(server_fd);
