@@ -12,6 +12,8 @@ int main() {
   struct sockaddr_in server_addr, client_addr;
   socklen_t client_len = sizeof(client_addr);
   char buffer[BUFFER_SIZE];
+  float realPart[BUFFER_SIZE];
+  float imaginaryPart[BUFFER_SIZE];
 
   // Create socket
   if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
@@ -62,7 +64,24 @@ int main() {
           break;
         }
         printf("Starting transmission...\n");
-        // Upload data to ram and start loop transmission
+        // Read in imaginary part
+        memset(imaginaryPart, 0, BUFFER_SIZE);
+        ssize_t imaginary_read = recv(client_fd, imaginaryPart, BUFFER_SIZE, 0);
+        // Assume data is float-aligned
+        int num_imaginary = imaginary_read / sizeof(float);
+        float *imaginary_data = (float *)imaginaryPart;
+        // Read in real part
+        memset(realPart, 0, BUFFER_SIZE);
+        ssize_t real_read = recv(client_fd, realPart, BUFFER_SIZE, 0);
+        // Assume data is float-aligned
+        int num_real = real_read / sizeof(float);
+        float *real_data = (float *)realPart;
+        // Print out collected complex data
+        for (int i = 0; i < num_real; i++) {
+          printf("real[%d] = %f imaginary[%d] = %f\n", i, real_data[i], i,
+                 imaginary_data[i]);
+        }
+        // Start loop transmission
       } else if (strcmp(buffer, "stop") == 0) {
         snprintf(buffer, BUFFER_SIZE, "Stopped transmission");
         if (transmission == false) {
