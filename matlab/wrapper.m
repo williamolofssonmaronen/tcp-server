@@ -6,7 +6,7 @@ serverPort = 8080;    % Change to the server's port
 
 % Create a TCP/IP client
 client = tcpclient(serverIP, serverPort);
-
+client.InputBufferSize = 8192;
 
 %%
 % Generate random binary data
@@ -22,4 +22,4 @@ pause(1);
 transmit_stop(client);
 pause(1);
 % Recieve signal
-rxSignal = recieve(client);
+recieve(client, bitsIn);

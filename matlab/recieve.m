@@ -13,16 +13,26 @@ Rsym = 10e6; % symbol rate
 % signal the server to recieve
 write(client, "recieve");
 % Wait until data is available
-while t.NumBytesAvailable == 0
-    pause(0.1);
-end
+%while t.NumBytesAvailable == 0
+%    pause(0.1);
+%end
 
-% Read raw bytes
-numFloats = 500;  % you should know this ahead of time or send it first
-rawData = read(client, numFloats * 4, 'uint8');
+pause(0.5);
+response = read(client, 18, 'uint8');
+disp(char(response));
 
-% Convert raw bytes to float (single precision)
-rxSignal = typecast(uint8(rawData), 'single');
+pause(0.5);
+real_data = fread(client, 500, 'single');   % 500 floats * 4 bytes
+disp('Real part bytes received:');
+%disp(real_bytes);  % Debug: Show raw byte data
+
+pause(0.5);
+imaginary_data = fread(client, 500, 'single');   % 500 floats * 4 bytes
+disp('Imaginary part bytes received:');
+%disp(imaginary_bytes);
+
+% Convert into complex vecotr
+rxSignal = complex(real_data, imaginary_data);
 % Convert single point float to double
 rxSignal = double(rxSignal);
 
@@ -30,7 +40,8 @@ rxSignal = double(rxSignal);
 rrc_filt = rcosdesign(rolloff, span, Rsamp/Rsym,'sqrt');
 rxSignal = conv(rrc_filt,rxSignal);
 % downsample
-rxSymbols = rxSignal((span*Rsamp/Rsym)+1:Rsamp/Rsym:(length(symbols)+span)*Rsamp/Rsym);
+%rxSymbols = rxSignal((span*Rsamp/Rsym)+1:Rsamp/Rsym:(length(symbols)+span)*Rsamp/Rsym);\
+rxSymbols = rxSignal((span*Rsamp/Rsym)+1:Rsamp/Rsym:(numSymbols+span)*Rsamp/Rsym);
 scatterplot(rxSymbols);
 % QAM Demodulation
 dataSymbolsOut = qamdemod(rxSymbols, M, 'gray', UnitAveragePower=true);

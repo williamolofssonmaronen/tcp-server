@@ -29,6 +29,9 @@ switch filter
 end
 
 write(client, "transmit");
+pause(0.5);
+response = read(client, client.NumBytesAvailable, 'uint8');
+disp(char(response));
 write(client, single(imag(txSignal)));
 write(client, single(real(txSignal)));
 
