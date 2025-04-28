@@ -20,6 +20,9 @@ int main() {
   int num_real = 0;
   int num_imaginary = 0;
 
+  memset(real_data, 0, sizeof(real_data));
+  memset(imaginary_data, 0, sizeof(imaginary_data));
+
   // Create socket
   if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
     perror("Socket creation failed");
@@ -70,19 +73,12 @@ int main() {
         }
         printf("Starting transmission...\n");
         // Read in imaginary part
-        memset(imaginaryPart, 0, BUFFER_SIZE);
-        ssize_t imaginary_read = recv(client_fd, imaginaryPart, BUFFER_SIZE, 0);
-        // Assume data is float-aligned
-        int num_imaginary = imaginary_read / sizeof(float);
-        float *imaginary_data = (float *)imaginaryPart;
+        ssize_t imaginary_read =
+            recv(client_fd, imaginary_data, sizeof(imaginary_data), 0);
         // Read in real part
-        memset(realPart, 0, BUFFER_SIZE);
-        ssize_t real_read = recv(client_fd, realPart, BUFFER_SIZE, 0);
-        // Assume data is float-aligned
-        int num_real = real_read / sizeof(float);
-        float *real_data = (float *)realPart;
+        ssize_t real_read = recv(client_fd, real_data, sizeof(real_data), 0);
         // Print out collected complex data
-        for (int i = 0; i < num_real; i++) {
+        for (int i = 0; i < 500; i++) {
           printf("real[%d] = %f imaginary[%d] = %f\n", i, real_data[i], i,
                  imaginary_data[i]);
         }
@@ -109,12 +105,8 @@ int main() {
           break;
         }
         printf("Starting recieving\n");
-        send(client_fd, &num_real, sizeof(int), 0);
-        send(client_fd, real_data, num_real * sizeof(float), 0);
-        send(client_fd, &num_imaginary, sizeof(int), 0);
-        send(client_fd, imaginary_data, num_imaginary * sizeof(float), 0);
-        printf("Sent %d real and %d imaginary floats to client\n", num_real,
-               num_imaginary);
+        send(client_fd, real_data, sizeof(real_data)/sizeof(float) * sizeof(float), 0);
+        send(client_fd, imaginary_data, sizeof(imaginary_data)/sizeof(float) * sizeof(float), 0);
       } else {
         snprintf(buffer, BUFFER_SIZE, "Unkown command");
         if (send(client_fd, buffer, strlen(buffer), 0) < 0) {
