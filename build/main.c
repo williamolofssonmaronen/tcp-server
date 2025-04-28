@@ -6,6 +6,7 @@
 
 #define PORT 8080
 #define BUFFER_SIZE 8192
+#define MAX_FLOATS (BUFFER_SIZE / sizeof(float))
 
 int main() {
   int server_fd, client_fd;
@@ -14,6 +15,10 @@ int main() {
   char buffer[BUFFER_SIZE];
   float realPart[BUFFER_SIZE];
   float imaginaryPart[BUFFER_SIZE];
+  float real_data[500];
+  float imaginary_data[500];
+  int num_real = 0;
+  int num_imaginary = 0;
 
   // Create socket
   if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
@@ -104,6 +109,12 @@ int main() {
           break;
         }
         printf("Starting recieving\n");
+        send(client_fd, &num_real, sizeof(int), 0);
+        send(client_fd, real_data, num_real * sizeof(float), 0);
+        send(client_fd, &num_imaginary, sizeof(int), 0);
+        send(client_fd, imaginary_data, num_imaginary * sizeof(float), 0);
+        printf("Sent %d real and %d imaginary floats to client\n", num_real,
+               num_imaginary);
       } else {
         snprintf(buffer, BUFFER_SIZE, "Unkown command");
         if (send(client_fd, buffer, strlen(buffer), 0) < 0) {
