@@ -15,13 +15,11 @@ int main() {
   char buffer[BUFFER_SIZE];
   float realPart[BUFFER_SIZE];
   float imaginaryPart[BUFFER_SIZE];
-  float real_data[500];
-  float imaginary_data[500];
+  float real_data[8192];
+  float imaginary_data[8192];
   int num_real = 0;
   int num_imaginary = 0;
-
-  memset(real_data, 0, sizeof(real_data));
-  memset(imaginary_data, 0, sizeof(imaginary_data));
+  int num_floats = 0;
 
   // Create socket
   if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
@@ -65,6 +63,8 @@ int main() {
     if (bytes_read > 0) {
       printf("Received: %s\n", buffer);
       if (strcmp(buffer, "transmit") == 0) {
+        memset(real_data, 0, sizeof(real_data));
+        memset(imaginary_data, 0, sizeof(imaginary_data));
         transmission = true;
         snprintf(buffer, BUFFER_SIZE, "Starting transmission");
         if (send(client_fd, buffer, strlen(buffer), 0) < 0) {
@@ -72,13 +72,22 @@ int main() {
           break;
         }
         printf("Starting transmission...\n");
+        ssize_t num_bytes = recv(client_fd, &num_floats, sizeof(int), 0);
+        printf("Expecting %d floats.\n", num_floats);
         // Read in imaginary part
         ssize_t imaginary_read =
-            recv(client_fd, imaginary_data, sizeof(imaginary_data), 0);
+            recv(client_fd, imaginary_data, num_floats * sizeof(float), 0);
         // Read in real part
-        ssize_t real_read = recv(client_fd, real_data, sizeof(real_data), 0);
+        ssize_t real_read =
+            recv(client_fd, real_data, num_floats * sizeof(float), 0);
+        num_imaginary = (int)imaginary_read / sizeof(float);
+        num_real = (int)real_read / sizeof(float);
+        if (num_imaginary != num_floats || num_real != num_floats) {
+          printf("Re: %d. Im: %d\n", num_real, num_imaginary);
+          perror("Not as many imaginary as real or vice versa!");
+        }
         // Print out collected complex data
-        for (int i = 0; i < 500; i++) {
+        for (int i = 0; i < num_floats; i++) {
           printf("real[%d] = %f imaginary[%d] = %f\n", i, real_data[i], i,
                  imaginary_data[i]);
         }
@@ -105,8 +114,11 @@ int main() {
           break;
         }
         printf("Starting recieving\n");
-        send(client_fd, real_data, sizeof(real_data)/sizeof(float) * sizeof(float), 0);
-        send(client_fd, imaginary_data, sizeof(imaginary_data)/sizeof(float) * sizeof(float), 0);
+        send(client_fd, &num_floats, sizeof(num_floats), 0);
+        send(client_fd, real_data, num_floats * sizeof(float) * sizeof(float),
+             0);
+        send(client_fd, imaginary_data,
+             num_floats * sizeof(float) * sizeof(float), 0);
       } else {
         snprintf(buffer, BUFFER_SIZE, "Unkown command");
         if (send(client_fd, buffer, strlen(buffer), 0) < 0) {

@@ -1,7 +1,6 @@
 function [txSignal] = transmit_start(client, bitsIn)
 % PARAMETERS
 M = 16; % Modulation order
-numSymbols = 100; % Number of symbols
 rolloff = 0.25; % RRC roll-off factor
 span = 25; % RRC filter transient lenght
 Rsamp = 40e6; % sample rate
@@ -49,8 +48,10 @@ while (client.NumBytesAvailable == 0)
     pause(0.1);
 end
 response = read(client, client.NumBytesAvailable, 'uint8');
-
 disp(char(response));
+
+write(client, int32(length(txSignal)));
+
 write(client, single(imag(txSignal)));
 write(client, single(real(txSignal)));
 

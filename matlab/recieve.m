@@ -1,14 +1,10 @@
-function [rxSignal_trimmed] = recieve(client, bitsIn)
+function [rxSignal] = recieve(client)
 % Parameters
-M = 16; % modulation order (M-QAM)
-k = log2(M); % number of bits per symbol
-numSymbols = 100; % number of symbols
-numBits = numSymbols*k; % number of bits
 rolloff = 0.25; % RRC roll-off factor
 span = 25; % RRC filter transient lenght
 Rsamp = 40e6; % sample rate
 Rsym = 10e6; % symbol rate
-SNR = 20;
+SNR = 40;
 plotting = 'yes';
 noise = true;
 filter = true;
@@ -25,14 +21,26 @@ disp(char(response));
 while (client.NumBytesAvailable == 0)
     pause(0.1);
 end
-real_data = fread(client, 500, 'single');   % 500 floats * 4 bytes
+
+% Read header: the number of floats to expect (int32)
+%numBytes = read(client, 4, "uint8");
+%numFloats = typecast(uint8(numBytes), 'int32');
+%disp(['Expecting ', num2str(numFloats), ' floats.']);
+
+numFloats = fread(client,1,'int32');
+
+while (client.NumBytesAvailable == 0)
+    pause(0.1);
+end
+
+real_data = fread(client, numFloats, 'single');   % 500 floats * 4 bytes
 disp('Real part bytes received:');
 %disp(real_bytes);  % Debug: Show raw byte data
 
 while (client.NumBytesAvailable == 0)
     pause(0.1);
 end
-imaginary_data = fread(client, 500, 'single');   % 500 floats * 4 bytes
+imaginary_data = fread(client, numFloats, 'single');   % 500 floats * 4 bytes
 disp('Imaginary part bytes received:');
 %disp(imaginary_bytes);
 
@@ -47,12 +55,11 @@ if noise
 end
 
 % Matched filter
-rrc_filt = rcosdesign(rolloff, span, Rsamp/Rsym,'sqrt');
-rxSignal = conv(rrc_filt,rxSignal);
-% Calculate delay
-delay = (length(rrc_filt)-1)/2;
-% Trim filtered rxSignal
-rxSignal_trimmed = rxSignal(delay+1:end-delay);
+
+if filter
+    rrc_filt = rcosdesign(rolloff, span, Rsamp/Rsym,'sqrt');
+    rxSignal = conv(rrc_filt,rxSignal);
+end
 
 switch plotting
     case 'yes'
@@ -71,17 +78,6 @@ end
 
 % downsample
 %rxSymbols = rxSignal((span*Rsamp/Rsym)+1:Rsamp/Rsym:(length(symbols)+span)*Rsamp/Rsym);\
-rxSymbols = rxSignal((span*Rsamp/Rsym)+1:Rsamp/Rsym:(numSymbols+span)*Rsamp/Rsym);
-scatterplot(rxSymbols);
-% QAM Demodulation
-dataSymbolsOut = qamdemod(rxSymbols, M, 'gray', UnitAveragePower=true);
-% convert decimal values back to binary
-dataOutMatrix = de2bi(dataSymbolsOut, k, 'left-msb');
-% reshape binary matrix to a vector
-dataOut = dataOutMatrix(:);
-% calculate the number of bit errors
-numErrors = sum(bitsIn ~= dataOut);
-disp(['Number of bit errors: ' num2str(numErrors)])
-disp(['Bit error rate: ' num2str(numErrors / numBits)])
+
 end
 
