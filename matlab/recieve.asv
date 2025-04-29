@@ -1,4 +1,4 @@
-function [rxSignal_trimmed] = recieve(client, bitsIn)
+function [] = recieve(client, bitsIn)
 % Parameters
 M = 16; % modulation order (M-QAM)
 k = log2(M); % number of bits per symbol
@@ -9,29 +9,26 @@ span = 25; % RRC filter transient lenght
 Rsamp = 40e6; % sample rate
 Rsym = 10e6; % symbol rate
 SNR = 20;
+
 plotting = 'yes';
-noise = true;
-filter = true;
 
-% Signal the server to recieve
+% signal the server to recieve
 write(client, "recieve");
+% Wait until data is available
+%while t.NumBytesAvailable == 0
+%    pause(0.1);
+%end
 
-while (client.NumBytesAvailable == 0)
-    pause(0.1);
-end
+pause(0.5);
 response = read(client, 18, 'uint8');
 disp(char(response));
 
-while (client.NumBytesAvailable == 0)
-    pause(0.1);
-end
+pause(0.5);
 real_data = fread(client, 500, 'single');   % 500 floats * 4 bytes
 disp('Real part bytes received:');
 %disp(real_bytes);  % Debug: Show raw byte data
 
-while (client.NumBytesAvailable == 0)
-    pause(0.1);
-end
+pause(0.5);
 imaginary_data = fread(client, 500, 'single');   % 500 floats * 4 bytes
 disp('Imaginary part bytes received:');
 %disp(imaginary_bytes);
@@ -42,27 +39,38 @@ rxSignal = complex(real_data, imaginary_data);
 rxSignal = double(rxSignal);
 
 % Add noise
-if noise
-    rxSignal = awgn(rxSignal, SNR, 'measured');
-end
+rxSignal = awgn(rxSignal, SNR, 'measured');
 
-% Matched filter
+% matched filter
 rrc_filt = rcosdesign(rolloff, span, Rsamp/Rsym,'sqrt');
 rxSignal = conv(rrc_filt,rxSignal);
-% Calculate delay
-delay = (length(rrc_filt)-1)/2;
-% Trim filtered rxSignal
-rxSignal_trimmed = rxSignal(delay+1:end-delay);
+
+fc = 1e6;
+t = (0:length(rxSignal)-1)/Rsamp;
+% Separate I and Q
+I = real(rxSignal);
+Q = imag(rxSignal);
+% Reshape
+t = reshape(t, size(I));
+% Generate real RF waveform
+rf_signal = @(t) I .* cos(2.*pi.*fc.*t) - Q .* sin(2.*pi.*fc.*t);
+
+
+% Calculate envelope (magnitude of IQ)
+envelope = abs(s);
+
 
 switch plotting
     case 'yes'
         figure('Name','Reciever'), subplot(1,2,1)
         pwelch(rxSignal,[],[],[],'centered',40e6)
         subplot(1,2,2)
-        plot((0:length(rxSignal)-1)/40, real(rxSignal),"b");
-        hold on
-        plot((0:length(rxSignal)-1)/40, imag(rxSignal),"g");
-        legend("In-phase", "Quadrature");
+        %plot(real(rxSignal),"b");
+        %hold on
+        %plot(imag(rxSignal),"g");
+        %legend("In-phase", "Quadrature");
+        plot(rf_signal(t))
+        ho
         title("IQ Data")
         grid on
         xlabel('Time (us)')
