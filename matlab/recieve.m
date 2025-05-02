@@ -35,14 +35,15 @@ end
 
 real_data = fread(client, numFloats, 'single');   % 500 floats * 4 bytes
 disp('Real part bytes received:');
-%disp(real_bytes);  % Debug: Show raw byte data
+disp(length(real_data));  % Debug: Show raw byte data
 
 while (client.NumBytesAvailable == 0)
     pause(0.1);
 end
-imaginary_data = fread(client, numFloats, 'single');   % 500 floats * 4 bytes
+
+imaginary_data = fread(client, numFloats, 'single')   % 500 floats * 4 bytes
 disp('Imaginary part bytes received:');
-%disp(imaginary_bytes);
+disp(length(imaginary_data));
 
 % Convert into complex vecotr
 rxSignal = complex(real_data, imaginary_data);

@@ -119,6 +119,11 @@ int main() {
              0);
         send(client_fd, imaginary_data,
              num_floats * sizeof(float) * sizeof(float), 0);
+        // Print out collected complex data
+        for (int i = 0; i < num_floats; i++) {
+          printf("real[%d] = %f imaginary[%d] = %f\n", i, real_data[i], i,
+                 imaginary_data[i]);
+        }
       } else {
         snprintf(buffer, BUFFER_SIZE, "Unkown command");
         if (send(client_fd, buffer, strlen(buffer), 0) < 0) {
