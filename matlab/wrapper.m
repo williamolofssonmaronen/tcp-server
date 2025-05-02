@@ -21,7 +21,7 @@ Rsym = 10e6; % symbol rate
 % Generate random binary data
 M = 16; % modulation order (M-QAM)
 k = log2(M); % number of bits per symbol
-numSymbols = 300; % number of symbols
+numSymbols = 3; % number of symbols
 numBits = numSymbols*k; % number of bits
 bitsIn = randi([0 1], numBits, 1);
 

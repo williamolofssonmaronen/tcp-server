@@ -13,8 +13,6 @@ int main() {
   struct sockaddr_in server_addr, client_addr;
   socklen_t client_len = sizeof(client_addr);
   char buffer[BUFFER_SIZE];
-  float realPart[BUFFER_SIZE];
-  float imaginaryPart[BUFFER_SIZE];
   float real_data[8192];
   float imaginary_data[8192];
   int num_real = 0;
@@ -58,6 +56,7 @@ int main() {
 
   bool transmission = false;
   while (1) {
+    printf("Awaiting command...\n");
     memset(buffer, 0, BUFFER_SIZE);
     ssize_t bytes_read = recv(client_fd, buffer, BUFFER_SIZE, 0);
     if (bytes_read > 0) {
@@ -73,7 +72,11 @@ int main() {
         }
         printf("Starting transmission...\n");
         ssize_t num_bytes = recv(client_fd, &num_floats, sizeof(int), 0);
-        printf("Expecting %d floats.\n", num_floats);
+        printf("Expecting %d floats of the maximum allowed %d\n.", num_floats,
+               (int)MAX_FLOATS);
+        if (num_floats > (int)MAX_FLOATS) {
+          perror("Warning: too many floats!");
+        }
         // Read in imaginary part
         ssize_t imaginary_read =
             recv(client_fd, imaginary_data, num_floats * sizeof(float), 0);
@@ -88,8 +91,8 @@ int main() {
         }
         // Print out collected complex data
         for (int i = 0; i < num_floats; i++) {
-          printf("real[%d] = %f imaginary[%d] = %f\n", i, real_data[i], i,
-                 imaginary_data[i]);
+          // printf("real[%d] = %f imaginary[%d] = %f\n", i, real_data[i], i,
+          //        imaginary_data[i]);
         }
         // Start loop transmission
       } else if (strcmp(buffer, "stop") == 0) {
@@ -114,16 +117,25 @@ int main() {
           break;
         }
         printf("Starting recieving\n");
-        send(client_fd, &num_floats, sizeof(num_floats), 0);
-        send(client_fd, real_data, num_floats * sizeof(float),
-             0);
-        send(client_fd, imaginary_data,
-             num_floats * sizeof(float), 0);
+        // Start recieving loop and timer.
+        printf("Sending num_floats...\n");
+        if (send(client_fd, &num_floats, sizeof(num_floats), 0) < 0) {
+          perror("Sending of num_floats failed!");
+        }
+        printf("Sending real_data...\n");
+        if (send(client_fd, real_data, num_floats * sizeof(float), 0) < 0) {
+          perror("Sending of real_data failed!");
+        }
+        printf("Sending imaginary_data...\n");
+        if (send(client_fd, imaginary_data, num_floats * sizeof(float), 0) < 0) {
+          perror("Sending of imaginary_data failed!");
+        }
         // Print out collected complex data
         for (int i = 0; i < num_floats; i++) {
-          printf("real[%d] = %f imaginary[%d] = %f\n", i, real_data[i], i,
-                 imaginary_data[i]);
+          // printf("real[%d] = %f imaginary[%d] = %f\n", i, real_data[i], i,
+          //        imaginary_data[i]);
         }
+        printf("Recieved and sent successfully.\n");
       } else {
         snprintf(buffer, BUFFER_SIZE, "Unkown command");
         if (send(client_fd, buffer, strlen(buffer), 0) < 0) {
