@@ -7,7 +7,7 @@ serverPort = 8080;    % Change to the server's port
 
 % Create a TCP/IP client
 client = tcpclient(serverIP, serverPort);
-client.InputBufferSize = 8192;
+%client.InputBufferSize = 8192;
 
 flush(client);
 
@@ -19,7 +19,7 @@ Rsym = 10e6; % symbol rate
 % Generate random binary data
 M = 16; % modulation order (M-QAM)
 k = log2(M); % number of bits per symbol
-numSymbols = 3; % number of symbols
+numSymbols = 300; % number of symbols
 numBits = numSymbols*k; % number of bits
 bitsIn = randi([0 1], numBits, 1);
 
@@ -66,3 +66,7 @@ legend("Re(TX)", "Im(TX)", "Re(RX)", "Im(RX)");
 title("IQ Data")
 grid on
 xlabel('Time (us)')
+%% Shutdown
+write(client, "exit");
+response = read(client, client.NumBytesAvailable, 'uint8');
+disp(char(response));
