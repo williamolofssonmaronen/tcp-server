@@ -55,7 +55,8 @@ int main() {
   printf("Client connected. Awaiting ...\n");
 
   bool transmission = false;
-  while (1) {
+  bool keep_running = true;
+  while (keep_running) {
     printf("Awaiting command...\n");
     memset(buffer, 0, BUFFER_SIZE);
     ssize_t bytes_read = recv(client_fd, buffer, BUFFER_SIZE, 0);
@@ -127,15 +128,21 @@ int main() {
           perror("Sending of real_data failed!");
         }
         printf("Sending imaginary_data...\n");
-        if (send(client_fd, imaginary_data, num_floats * sizeof(float), 0) < 0) {
+        if (send(client_fd, imaginary_data, num_floats * sizeof(float), 0) <
+            0) {
           perror("Sending of imaginary_data failed!");
         }
-        // Print out collected complex data
+        // Print out complex data that were just sent
         for (int i = 0; i < num_floats; i++) {
           // printf("real[%d] = %f imaginary[%d] = %f\n", i, real_data[i], i,
           //        imaginary_data[i]);
         }
         printf("Recieved and sent successfully.\n");
+      } else if (strcmp(buffer, "exit") == 0 || strcmp(buffer, "shutdown") == 0) {
+        printf("Shutdown command received.\n");
+        snprintf(buffer, BUFFER_SIZE, "Shutting down server...");
+        send(client_fd, buffer, strlen(buffer), 0);
+        keep_running = false;  // exit loop and shut down
       } else {
         snprintf(buffer, BUFFER_SIZE, "Unkown command");
         if (send(client_fd, buffer, strlen(buffer), 0) < 0) {
@@ -146,7 +153,13 @@ int main() {
       }
     } else if (bytes_read == 0) {
       printf("Client disconnected.\n");
-      break;
+      client_fd =
+          accept(server_fd, (struct sockaddr *)&client_addr, &client_len);
+      if (client_fd < 0) {
+        perror("Accept failed");
+        break;
+      }
+      printf("New client connected.\n");
     } else {
       perror("Receive failed");
       break;

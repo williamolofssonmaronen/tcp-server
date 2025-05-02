@@ -1,5 +1,5 @@
 %%
-clear all;
+clear all; close all;
 % SERVER DETAILS
 %serverIP = '192.168.50.125'; % Change to the server's IP address
 serverIP = "localhost";
@@ -9,9 +9,7 @@ serverPort = 8080;    % Change to the server's port
 client = tcpclient(serverIP, serverPort);
 client.InputBufferSize = 8192;
 
-%%
-% Close all figures
-close all; flush(client);
+flush(client);
 
 rolloff = 0.25; % RRC roll-off factor
 span = 25; % RRC filter transient lenght
