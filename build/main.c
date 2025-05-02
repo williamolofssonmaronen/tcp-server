@@ -115,10 +115,10 @@ int main() {
         }
         printf("Starting recieving\n");
         send(client_fd, &num_floats, sizeof(num_floats), 0);
-        send(client_fd, real_data, num_floats * sizeof(float) * sizeof(float),
+        send(client_fd, real_data, num_floats * sizeof(float),
              0);
         send(client_fd, imaginary_data,
-             num_floats * sizeof(float) * sizeof(float), 0);
+             num_floats * sizeof(float), 0);
         // Print out collected complex data
         for (int i = 0; i < num_floats; i++) {
           printf("real[%d] = %f imaginary[%d] = %f\n", i, real_data[i], i,
