@@ -1,10 +1,10 @@
-function [rxSignal] = recieve(client)
+function rxSignal = recieve(client)
 % Parameters
 rolloff = 0.25; % RRC roll-off factor
-span = 25; % RRC filter transient lenght
-Rsamp = 40e6; % sample rate
-Rsym = 10e6; % symbol rate
-SNR = 20;
+span = 20; % RRC filter transient lenght
+Rsamp = 105e6; % sample rate
+Rsym = 5e6; % symbol rate
+SNR = 50;
 plotting = 'yes';
 noise = true;
 filter = true;
@@ -41,9 +41,12 @@ while (client.NumBytesAvailable == 0)
     pause(0.1);
 end
 
-imaginary_data = fread(client, numFloats, 'single')   % 500 floats * 4 bytes
+imaginary_data = fread(client, numFloats, 'single');   % 500 floats * 4 bytes
 disp('Imaginary part bytes received:');
 disp(length(imaginary_data));
+
+imaginary_data = resample(imaginary_data, 21, 20);
+real_data = resample(real_data, 21, 20);
 
 % Convert into complex vecotr
 rxSignal = complex(real_data, imaginary_data);
