@@ -28,8 +28,8 @@ sps_tx = fs_tx / Rsym;
 % Generate random binary data
 M = 16; % modulation order (M-QAM)
 k = log2(M); % number of bits per symbol
-numSymbols = 10; % number of symbols
-numPreambleSymbols = 32;
+numSymbols = 75; % number of symbols
+numPreambleSymbols = 5;
 numBits = numSymbols*k; % number of bits
 numPreambleBits = numPreambleSymbols*k;
 preamble_bits = randi([0 1], numPreambleBits, 1); % 128 bits = 32 symbols for 16-QAM
@@ -40,6 +40,7 @@ bitsIn = [preamble_bits; data_bits];
 
 rrc_filt = rcosdesign(rolloff, span, Radc/Rsym,'sqrt');
 rrc_rx = rcosdesign(rolloff, span, sps_rx,'sqrt');
+rrc_tx = rcosdesign(rolloff, span, sps_tx,'sqrt');
 
 % Start transmission
 [txSignal, tx_preamble_waveform] = transmit_start(client, bitsIn);
@@ -50,35 +51,7 @@ transmit_stop(client);
 % Recieve signal
 rxSignal = recieve(client);
 
-% [corr_vals, lags] = xcorr(rxSignal, matched_preamble);
-% [~, max_idx] = max(real(corr_vals));  % or real()
-% start_lag = lags(max_idx);
-% rx_start = start_lag + length(matched_preamble);
-
-[corr_vals, lags] = xcorr(rxSignal, matched_preamble);
-[~, peak_idx] = max(abs(corr_vals));
-rx_start = lags(peak_idx) + length(matched_preamble);
-
-if rx_start < length(rxSignal)
-    rx_synced = rxSignal(rx_start + 1:end);
-    rxSymbols = rx_synced(1:sps_rx:end);
-else
-    error("Start index too late. No room for data after preamble.");
-end
-
-% corr = abs(xcorr(rxSignal, matched_preamble));
-% [~, max_idx] = max(corr);
-% start_idx = max_idx-length(matched_preamble) + 1;
-
-
-% Sync and downsample
-% rxSignalSynced = rxSignal(start_idx + length(matched_preamble):end);
-%rxSymbols = rxSignalSynced((span*Radc/Rsym)+1:Radc/Rsym:(numSymbols+numPreambleSymbols+span)*Radc/Rsym);
-
-% Extract and downsample after preamble
-%rxSignalSynced = rx_filtered(start_idx + length(preamble_up_rx):end);
-% rxSymbols = rxSignalSynced(1:sps_rx:end);
-
+rxSymbols = rxSignal((span*Radc/Rsym)+1:Radc/Rsym:(numSymbols+numPreambleSymbols+span)*Radc/Rsym);
 scatterplot(rxSymbols);
 % QAM Demodulation
 dataSymbolsOut = qamdemod(rxSymbols, M, 'gray', UnitAveragePower=true);

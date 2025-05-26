@@ -12,7 +12,7 @@ plotting = 'yes'; % opt plot 'yes' or 'no'
 M = 16; % modulation order (M-QAM)
 k = log2(M); % number of bits per symbol
 numSymbols = 40; % number of symbols
-numPreambleSymbols = 32;
+numPreambleSymbols = 10;
 numBits = numSymbols*k; % number of bits
 numPreambleBits = numPreambleSymbols*k;
 

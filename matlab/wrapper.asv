@@ -1,9 +1,5 @@
 %%
-
-
-
 clear all; close all;
-
 
 fs_rx = 105e6;
 fs_tx = 100e6;
@@ -32,19 +28,19 @@ sps_tx = fs_tx / Rsym;
 % Generate random binary data
 M = 16; % modulation order (M-QAM)
 k = log2(M); % number of bits per symbol
-numSymbols = 40; % number of symbols
-numPreambleSymbols = 32;
+numSymbols = 75; % number of symbols
+numPreambleSymbols = 5;
 numBits = numSymbols*k; % number of bits
 numPreambleBits = numPreambleSymbols*k;
 preamble_bits = randi([0 1], numPreambleBits, 1); % 128 bits = 32 symbols for 16-QAM
 %preamble_sym = qam_mod(preamble_bits);
-
 
 data_bits = randi([0 1], numBits, 1);
 bitsIn = [preamble_bits; data_bits];
 
 rrc_filt = rcosdesign(rolloff, span, Radc/Rsym,'sqrt');
 rrc_rx = rcosdesign(rolloff, span, sps_rx,'sqrt');
+rrc_tx = rcosdesign(rolloff, span, sps_tx,'sqrt');
 
 % Start transmission
 [txSignal, tx_preamble_waveform] = transmit_start(client, bitsIn);
@@ -55,19 +51,43 @@ transmit_stop(client);
 % Recieve signal
 rxSignal = recieve(client);
 
+% [corr_vals, lags] = xcorr(rxSignal, matched_preamble);
+% [~, max_idx] = max(real(corr_vals));  % or real()
+% start_lag = lags(max_idx);
+% rx_start = start_lag + length(matched_preamble);
 
-[corr_vals, lags] = xcorr(rxSignal, matched_preamble);
-[~, max_idx] = max(abs(corr_vals));  % or real()
-start_lag = lags(max_idx);
-rx_start = start_lag + length(matched_preamble);
+% rrc_delay = (length(rrc_tx) - 1);  % total group delay
+% [corr_vals, lags] = xcorr(rxSignal, matched_preamble);
+% [~, peak_idx] = max(abs(corr_vals));
+% rx_start = lags(peak_idx); %+ length(matched_preamble);
 
-if rx_start < length(rx_filtered)
-    rx_synced = rxSignal(rx_start + 1:end);
-    rx_downsampled = rx_synced(1:sps_rx:end);
-else
-    error("Start index too late. No room for data after preamble.");
-end
+% corr = abs(xcorr(rxSignal, matched_preamble));
+% [~, max_idx] = max(corr);
+% 
+% % Total delay from RRC filters
+% rrc_delay = (length(rrc_rx)-1+length(rrc_tx)-1)/2;  % Total group delay in samples
+% preamble_len = length(matched_preamble);
+% 
+% % Calculate start index of payload
+% start_idx = max_idx - preamble_len + 1;
+% 
+% % Adjust for delay
+% payload_start = start_idx + rrc_delay + 1;
+% 
+% % Check bounds and extract
+% if payload_start <= length(rxSignal)
+%     rx_synced = rxSignal(payload_start:end);
+%     rxSymbols = rx_synced(1:sps:end);
+% else
+%     error('Preamble match too late in signal');
+% end
 
+% if rx_start < length(rxSignal)
+%     rx_synced = rxSignal(rx_start + 1:end);
+%     rxSymbols = rx_synced(1:sps_rx:end);
+% else
+%     error("Start index too late. No room for data after preamble.");
+% end
 
 % corr = abs(xcorr(rxSignal, matched_preamble));
 % [~, max_idx] = max(corr);
