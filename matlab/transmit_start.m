@@ -37,7 +37,7 @@ preamble_sym = qammod(dec_preamble, M, 'gray', UnitAveragePower=true);
 switch filter
     case 'yes'
         % Create RRC filter
-        rrc_filt = rcosdesign(rolloff, span, Rsamp/Rsym,'sqrt');
+        rrc_filt = rcosdesign(rolloff, span, Rsamp/Rsym,"sqrt");
         % up-sample
         symbolsUp = upsample(symbols, Rsamp/Rsym);
         % pulse shaping

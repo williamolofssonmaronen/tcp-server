@@ -4,7 +4,7 @@ rolloff = 0.25; % RRC roll-off factor
 span = 20; % RRC filter transient lenght
 Rsamp = 105e6; % sample rate
 Rsym = 5e6; % symbol rate
-SNR = 100;
+SNR = 10;
 plotting = 'yes';
 noise = true;
 filter = true;
@@ -61,7 +61,7 @@ end
 % Matched filter
 
 if filter
-    rrc_filt = rcosdesign(rolloff, span, Rsamp/Rsym,'sqrt');
+    rrc_filt = rcosdesign(rolloff, span, Rsamp/Rsym,"sqrt");
     rxSignal = conv(rrc_filt,rxSignal);
 end
 
