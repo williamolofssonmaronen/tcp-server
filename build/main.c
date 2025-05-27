@@ -3,14 +3,16 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 #define PORT 8080
-#define BUFFER_SIZE 8192*2^4
-#define MAX_FLOATS (BUFFER_SIZE / sizeof(float))
+#define BUFFER_SIZE 8192
+#define MAX_FLOATS (BUFFER_SIZE * sizeof(float))
 
 int main() {
   int server_fd, client_fd;
   struct sockaddr_in server_addr, client_addr;
+  int opt = 1;
   socklen_t client_len = sizeof(client_addr);
   char buffer[BUFFER_SIZE];
   float real_data[BUFFER_SIZE];
@@ -23,6 +25,13 @@ int main() {
   if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
     perror("Socket creation failed");
     return 1;
+  }
+
+  // Set SO_REUSEADDR option before bind()
+  if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+    perror("setsockopt(SO_REUSEADDR) failed");
+    close(server_fd);
+    exit(EXIT_FAILURE);
   }
 
   // Define server address
