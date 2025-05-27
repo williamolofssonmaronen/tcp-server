@@ -50,34 +50,18 @@ transmit_stop(client);
 % Recieve signal
 rxSignal = recieve(client);
 
+delay_samples = 500;  % for example, delay by 500 samples
+rxSignal = rxSignal(:);
+rxSignal = [zeros(delay_samples, 1); rxSignal];
 
-corr = abs(xcorr(rxSignal, matched_preamble));
-[~, peak] = max(corr);
-frame_start = peak - length(matched_preamble) + 1;
+[corr, lags] = xcorr(rxSignal, matched_preamble);
+[~, peak_idx] = max(abs(corr));
+frame_start = lags(peak_idx);
 preamble_len_samples = 63 * sps_rx;
-payload_start = preamble_len_samples;
+payload_start = frame_start + preamble_len_samples;
 aligned = rxSignal(payload_start+1:end);
-aligned_downsampled = aligned(1:sps_rx:end);  % sps = 21 for RX
+aligned_downsampled = aligned(1:sps_rx:end);
 scatterplot(aligned_downsampled);
-% rxSymbols = rxSignal(((span)*fs_rx/Rsym)+1:fs_rx/Rsym:(numSymbols+63+span)*fs_rx/Rsym);
-% scatterplot(rxSymbols);
-
-
-% % Total delay from RRC filters
-% rrc_delay = span*fs_rx/Rsym;  % Total group delay in samples
-% preamble_len = length(matched_preamble);
-% % Calculate start index of payload
-% start_idx = max_idx - preamble_len + 1;
-% % Adjust for delay
-% payload_start = start_idx + rrc_delay + 1;
-% % Check bounds and extract
-% if payload_start <= length(rxSignal)
-%     rx_synced = rxSignal(payload_start:end);
-%     rx_downsampled = rx_synced(1:sps_rx:end);
-% else
-%     error('Preamble match too late in signal');
-% end
-
 
 % QAM Demodulation
 dataSymbolsOut = qamdemod(aligned_downsampled, M, 'gray', UnitAveragePower=true);
@@ -91,6 +75,29 @@ numErrors = sum(data_bits ~= dataOut);
 % numErrors = sum(bitsIn ~= dataOut);
 disp(['Number of bit errors: ' num2str(numErrors)])
 disp(['Bit error rate: ' num2str(numErrors / numBits)])
+
+
+% Plot received signal with frame alignment marker
+figure;
+plot(real(rxSignal));
+hold on;
+xline(payload_start, 'r--', 'LineWidth', 2);
+title('Received Signal with Detected Payload Start');
+xlabel('Sample Index');
+ylabel('Amplitude');
+legend('rxSignal (real part)', 'Detected Payload Start');
+grid on;
+
+% Plot the correlation magnitude
+figure;
+plot(lags, abs(corr));
+hold on;
+xline(lags(peak_idx), 'r--', 'LineWidth', 2);
+title('Cross-Correlation with Matched Preamble');
+xlabel('Lag');
+ylabel('Correlation Magnitude');
+legend('Cross-Correlation', 'Detected Frame Start');
+grid on;
 
 
 % Trim filtered rxSignal
@@ -113,8 +120,16 @@ subplot(1,2,2)
 plot((0:length(txSignal)-1), real(txSignal_norm));
 hold on
 plot((0:length(txSignal)-1), imag(txSignal_norm));
-plot((0:length(rxSignal_resampled)-1), real(rxSignal_resampled));
-plot((0:length(rxSignal_resampled)-1), imag(rxSignal_resampled));
+% plot((0:length(rxSignal_resampled)-1), real(rxSignal_resampled));
+% plot((0:length(rxSignal_resampled)-1), imag(rxSignal_resampled));
+
+
+
+
+plot(real(rxSignal_resampled));
+plot(imag(rxSignal_resampled));
+
+
 legend("Re(TX)", "Im(TX)", "Re(RX)", "Im(RX)");
 title("IQ Data")
 grid on
