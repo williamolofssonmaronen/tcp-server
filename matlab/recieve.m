@@ -4,10 +4,12 @@ rolloff = 0.25; % RRC roll-off factor
 span = 20; % RRC filter transient lenght
 Rsamp = 105e6; % sample rate
 Rsym = 5e6; % symbol rate
-SNR = 10;
+sps = Rsamp/ Rsym;
+SNR = 50;
 plotting = 'yes';
 noise = true;
 filter = true;
+
 
 % Signal the server to recieve
 write(client, "recieve");
@@ -27,13 +29,13 @@ end
 %numFloats = typecast(uint8(numBytes), 'int32');
 %disp(['Expecting ', num2str(numFloats), ' floats.']);
 
-numFloats = fread(client,1,'int32');
+numFloats = read(client,1,'int32');
 
 while (client.NumBytesAvailable == 0)
     pause(0.1);
 end
-
-real_data = fread(client, numFloats, 'single');   % 500 floats * 4 bytes
+real_data = read(client,numFloats, "single");
+% real_data = fread(client, numFloats, 'single');   % 500 floats * 4 bytes
 disp('Real part bytes received:');
 disp(length(real_data));  % Debug: Show raw byte data
 
@@ -41,7 +43,7 @@ while (client.NumBytesAvailable == 0)
     pause(0.1);
 end
 
-imaginary_data = fread(client, numFloats, 'single');   % 500 floats * 4 bytes
+imaginary_data = read(client, numFloats, 'single');   % 500 floats * 4 bytes
 disp('Imaginary part bytes received:');
 disp(length(imaginary_data));
 
@@ -62,7 +64,9 @@ end
 
 if filter
     rrc_filt = rcosdesign(rolloff, span, Rsamp/Rsym,"sqrt");
+    filter_delay = span * sps / 2;
     rxSignal = conv(rrc_filt,rxSignal);
+    rxSignal = rxSignal(filter_delay+1 : end-filter_delay);
 end
 
 switch plotting
@@ -84,4 +88,3 @@ end
 %rxSymbols = rxSignal((span*Rsamp/Rsym)+1:Rsamp/Rsym:(length(symbols)+span)*Rsamp/Rsym);\
 
 end
-

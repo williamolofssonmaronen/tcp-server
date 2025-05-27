@@ -1,9 +1,6 @@
 %%
+client(fl)
 clear all; close all;
-
-fs_rx = 105e6;
-fs_tx = 100e6;
-
 % SERVER DETAILS
 %serverIP = '192.168.50.125'; % Change to the server's IP address
 serverIP = "localhost";
@@ -11,16 +8,15 @@ serverPort = 8080;    % Change to the server's port
 
 % Create a TCP/IP client
 client = tcpclient(serverIP, serverPort);
-client.InputBufferSize = 8192;
-
+% client.InputBufferSize = 8192*4;
+% client.OutputBufferSize = 8192*4;
 flush(client);
 
 rolloff = 0.25; % RRC roll-off factor
 span = 20; % RRC filter transient lenght
-Rsamp = 100e6; % sample rate
-Radc = 105e6;
 Rsym = 5e6; % symbol rate
-
+fs_rx = 105e6;
+fs_tx = 100e6;
 
 sps_rx = fs_rx / Rsym;
 sps_tx = fs_tx / Rsym;
@@ -28,48 +24,82 @@ sps_tx = fs_tx / Rsym;
 % Generate random binary data
 M = 16; % modulation order (M-QAM)
 k = log2(M); % number of bits per symbol
-numSymbols = 75; % number of symbols
-numPreambleSymbols = 5;
+numSymbols = 200; % number of symbols
 numBits = numSymbols*k; % number of bits
-numPreambleBits = numPreambleSymbols*k;
-preamble_bits = randi([0 1], numPreambleBits, 1); % 128 bits = 32 symbols for 16-QAM
-%preamble_sym = qam_mod(preamble_bits);
-
 data_bits = randi([0 1], numBits, 1);
-bitsIn = [preamble_bits; data_bits];
+bitsIn = data_bits;
 
-rrc_filt = rcosdesign(rolloff, span, Radc/Rsym,'sqrt');
+dataIn = reshape(bitsIn, [], k);
+% Convert binary values to decimal values (integers)
+decIn = bi2de(dataIn, 'left-msb');
+% QAM Modulation
+symbols = qammod(decIn, M, 'gray', UnitAveragePower=true);
+
+
 rrc_rx = rcosdesign(rolloff, span, sps_rx,'sqrt');
 rrc_tx = rcosdesign(rolloff, span, sps_tx,'sqrt');
 
 % Start transmission
-[txSignal, tx_preamble_waveform] = transmit_start(client, bitsIn);
-tx_to_rx = resample(tx_preamble_waveform, fs_rx, fs_tx);
-matched_preamble = conv(tx_to_rx, rrc_rx, 'same');
+[txSignal, tx_preamble_waveform, tx_payload_waveform] = transmit_start(client, bitsIn);
+preamble_resampled = resample(tx_preamble_waveform, fs_rx, fs_tx);
+matched_preamble = conv(preamble_resampled, rrc_rx, 'same');
+payload_resampled = resample(tx_payload_waveform, fs_rx, fs_tx);
+matched_payload = conv(payload_resampled, rrc_rx, 'same');
 % Stop transmission
 transmit_stop(client);
 % Recieve signal
 rxSignal = recieve(client);
 
-rxSymbols = rxSignal((span*Radc/Rsym)+1:Radc/Rsym:(numSymbols+numPreambleSymbols+span)*Radc/Rsym);
-scatterplot(rxSymbols);
+
+corr = abs(xcorr(rxSignal, matched_preamble));
+[~, peak] = max(corr);
+frame_start = peak - length(matched_preamble) + 1;
+aligned = rxSignal(frame_start:end);
+aligned_downsampled = aligned(1:sps_rx:end);  % sps = 21 for RX
+scatterplot(aligned_downsampled);
+% rxSymbols = rxSignal(((span)*fs_rx/Rsym)+1:fs_rx/Rsym:(numSymbols+63+span)*fs_rx/Rsym);
+% scatterplot(rxSymbols);
+
+
+% % Total delay from RRC filters
+% rrc_delay = span*fs_rx/Rsym;  % Total group delay in samples
+% preamble_len = length(matched_preamble);
+% % Calculate start index of payload
+% start_idx = max_idx - preamble_len + 1;
+% % Adjust for delay
+% payload_start = start_idx + rrc_delay + 1;
+% % Check bounds and extract
+% if payload_start <= length(rxSignal)
+%     rx_synced = rxSignal(payload_start:end);
+%     rx_downsampled = rx_synced(1:sps_rx:end);
+% else
+%     error('Preamble match too late in signal');
+% end
+
+
 % QAM Demodulation
-dataSymbolsOut = qamdemod(rxSymbols, M, 'gray', UnitAveragePower=true);
+dataSymbolsOut = qamdemod(aligned_downsampled, M, 'gray', UnitAveragePower=true);
+% dataSymbolsOut = qamdemod(rxSymbols, M, 'gray', UnitAveragePower=true);
 % convert decimal values back to binary
 dataOutMatrix = de2bi(dataSymbolsOut, k, 'left-msb');
 % reshape binary matrix to a vector
 dataOut = dataOutMatrix(:);
 % calculate the number of bit errors
-numErrors = sum(bitsIn ~= dataOut);
-disp(['Number of bit errors: ' num2str(numErrors)])
-disp(['Bit error rate: ' num2str(numErrors / numBits)])
+numErrors = sum(data_bits ~= dataOut);
+% numErrors = sum(bitsIn ~= dataOut);
+% disp(['Number of bit errors: ' num2str(numErrors)])
+% disp(['Bit error rate: ' num2str(numErrors / numBits)])
 
 
-% Calculate delay
-delay = (length(rrc_rx)-1)/2;
 % Trim filtered rxSignal
+delay = (length(rrc_rx)-1)/2;
 rxSignal_trimmed = rxSignal(delay+1:end);
+% Resample trimmed rx
 rxSignal_resampled = resample(rxSignal_trimmed, fs_tx, fs_rx);
+% Normalize resampled and trimmed rx
+rxSignal_resampled = rxSignal_resampled / max(abs(rxSignal_resampled));
+% Normalize tx
+txSignal_norm = txSignal / max(abs(txSignal));
 % Plot total
 figure('Name','Total'), subplot(1,2,1)
 pwelch(txSignal,[],[],[],'centered',40e6)
@@ -77,11 +107,11 @@ hold on
 pwelch(rxSignal,[],[],[],'centered',40e6)
 legend("Transmitted", "Recieved");
 subplot(1,2,2)
-plot((0:length(txSignal)-1)/40, real(txSignal));
+plot((0:length(txSignal)-1), real(txSignal_norm));
 hold on
-plot((0:length(txSignal)-1), imag(txSignal));
-plot((0:length(rxSignal_resampled)-1)/40, real(rxSignal_resampled));
-plot((0:length(rxSignal_resampled)-1)/40, imag(rxSignal_resampled));
+plot((0:length(txSignal)-1), imag(txSignal_norm));
+plot((0:length(rxSignal_resampled)-1), real(rxSignal_resampled));
+plot((0:length(rxSignal_resampled)-1), imag(rxSignal_resampled));
 legend("Re(TX)", "Im(TX)", "Re(RX)", "Im(RX)");
 title("IQ Data")
 grid on
@@ -90,3 +120,111 @@ xlabel('Time (us)')
 write(client, "exit");
 response = read(client, client.NumBytesAvailable, 'uint8');
 disp(char(response));
+
+
+
+
+
+%%
+clear all; close all;
+
+fs_rx = 105e6;
+fs_tx = 100e6;
+
+rolloff = 0.25; % RRC roll-off factor
+span = 20; % RRC filter transient lenght
+Rsamp = 100e6; % sample rate
+Rsym = 10e6; % symbol rate
+sps = 10;
+
+% sps_rx = fs_rx / Rsym;
+% sps_tx = fs_tx / Rsym;
+% 
+% rrc_filt = rcosdesign(rolloff, span, Radc/Rsym,'sqrt');
+% rrc_rx = rcosdesign(rolloff, span, sps_rx,'sqrt');
+% rrc_tx = rcosdesign(rolloff, span, sps_tx,'sqrt');
+
+load("mats/rxSignal.mat");
+load("mats/txSignal.mat");
+load("mats/filtered_pilots.mat")
+
+rx_downsampled = rxSignal(1:sps:end);
+pilot_syms = filteredPilot(1:sps:end);
+
+corr = abs(xcorr(rx_downsampled, pilot_syms));
+[~, max_idx] = max(corr);
+frame_start = max_idx - length(pilot_syms) + 1;
+
+synchronized_frame = rxSignal(frame_start : end);
+
+plot((0:length(synchronized_frame)-1), real(synchronized_frame));
+hold on
+plot((0:length(synchronized_frame)-1), imag(synchronized_frame));
+plot((0:length(txSignal)-1), real(txSignal));
+plot((0:length(txSignal)-1), imag(txSignal));
+
+
+% % Trim filtered rxSignal
+% delay = (length(rrc_rx)-1)/2;
+% rxSignal_trimmed = rxSignal(delay+1:end);
+% % Resample trimmed rx
+% rxSignal_resampled = resample(rxSignal_trimmed, fs_tx, fs_rx);
+% % Normalize resampled and trimmed rx
+% rxSignal_resampled = rxSignal_resampled / max(abs(rxSignal_resampled));
+% % Normalize tx
+% txSignal_norm = txSignal / max(abs(txSignal));
+% % Plot total
+% figure('Name','Total'), subplot(1,2,1)
+% pwelch(txSignal,[],[],[],'centered',40e6)
+% hold on
+% pwelch(rxSignal,[],[],[],'centered',40e6)
+% legend("Transmitted", "Recieved");
+% subplot(1,2,2)
+% % plot((0:length(txSignal)-1), real(txSignal_norm));
+% hold on
+% % plot((0:length(txSignal)-1), imag(txSignal_norm));
+
+
+% corr = abs(xcorr(rxSignal, filteredPilot));
+% threshold = 0.8 * max(corr);  % or tune this
+% preamble_locs = find(corr > threshold);
+% preamble_locs = preamble_locs - length(filteredPilot) + 1;  % adjust for lag
+% 
+% payloads = {};  % cell array to store each payload
+% 
+% for i = 1:length(preamble_locs)
+%     start_idx = preamble_locs(i) + length(filteredPilot);
+%     end_idx = start_idx + numSymbols - 1;
+% 
+%     if end_idx <= length(rxSignal)
+%         payload = rxSignal(start_idx:end_idx);
+%         payloads{end+1} = payload;
+%     end
+% end
+
+
+% % Trim filtered rxSignal
+% delay = (length(rrc_rx)-1)/2;
+% rxSignal_trimmed = rxSignal(delay+1:end);
+% % Resample trimmed rx
+% rxSignal_resampled = resample(rxSignal_trimmed, fs_tx, fs_rx);
+% % Normalize resampled and trimmed rx
+% rxSignal_resampled = rxSignal_resampled / max(abs(rxSignal_resampled));
+% % Normalize tx
+% txSignal_norm = txSignal / max(abs(txSignal));
+% % Plot total
+% figure('Name','Total'), subplot(1,2,1)
+% pwelch(txSignal,[],[],[],'centered',40e6)
+% hold on
+% pwelch(rxSignal,[],[],[],'centered',40e6)
+% legend("Transmitted", "Recieved");
+% subplot(1,2,2)
+% % plot((0:length(txSignal)-1), real(txSignal_norm));
+% hold on
+% % plot((0:length(txSignal)-1), imag(txSignal_norm));
+% plot((0:length(rxSignal_resampled)-1), real(rxSignal_resampled));
+% plot((0:length(rxSignal_resampled)-1), imag(rxSignal_resampled));
+% % legend("Re(TX)", "Im(TX)", "Re(RX)", "Im(RX)");
+% title("IQ Data")
+% grid on
+% xlabel('Time (us)')
