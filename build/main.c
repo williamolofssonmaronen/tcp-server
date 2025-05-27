@@ -5,7 +5,7 @@
 #include <unistd.h>
 
 #define PORT 8080
-#define BUFFER_SIZE 8192
+#define BUFFER_SIZE 8192*2^4
 #define MAX_FLOATS (BUFFER_SIZE / sizeof(float))
 
 int main() {
@@ -13,8 +13,8 @@ int main() {
   struct sockaddr_in server_addr, client_addr;
   socklen_t client_len = sizeof(client_addr);
   char buffer[BUFFER_SIZE];
-  float real_data[8192];
-  float imaginary_data[8192];
+  float real_data[BUFFER_SIZE];
+  float imaginary_data[BUFFER_SIZE];
   int num_real = 0;
   int num_imaginary = 0;
   int num_floats = 0;
@@ -120,16 +120,20 @@ int main() {
         printf("Starting recieving\n");
         // Start recieving loop and timer.
         printf("Sending num_floats...\n");
-        if (send(client_fd, &num_floats, sizeof(num_floats), 0) < 0) {
+        ssize_t sent1 = send(client_fd, &num_floats, sizeof(num_floats), 0);
+        if (sent1 < 0) {
           perror("Sending of num_floats failed!");
         }
         printf("Sending real_data...\n");
-        if (send(client_fd, real_data, num_floats * sizeof(float), 0) < 0) {
+        ssize_t sent2 =
+            send(client_fd, real_data, num_floats * sizeof(float), 0);
+        if (sent2 < 0) {
           perror("Sending of real_data failed!");
         }
         printf("Sending imaginary_data...\n");
-        if (send(client_fd, imaginary_data, num_floats * sizeof(float), 0) <
-            0) {
+        ssize_t sent3 =
+            send(client_fd, imaginary_data, num_floats * sizeof(float), 0);
+        if (sent3 < 0) {
           perror("Sending of imaginary_data failed!");
         }
         // Print out complex data that were just sent
@@ -137,12 +141,15 @@ int main() {
           // printf("real[%d] = %f imaginary[%d] = %f\n", i, real_data[i], i,
           //        imaginary_data[i]);
         }
+        printf("Sent bytes: header=%zd, real=%zd, imag=%zd\n", sent1, sent2,
+               sent3);
         printf("Recieved and sent successfully.\n");
-      } else if (strcmp(buffer, "exit") == 0 || strcmp(buffer, "shutdown") == 0) {
+      } else if (strcmp(buffer, "exit") == 0 ||
+                 strcmp(buffer, "shutdown") == 0) {
         printf("Shutdown command received.\n");
         snprintf(buffer, BUFFER_SIZE, "Shutting down server...");
         send(client_fd, buffer, strlen(buffer), 0);
-        keep_running = false;  // exit loop and shut down
+        keep_running = false; // exit loop and shut down
       } else {
         snprintf(buffer, BUFFER_SIZE, "Unkown command");
         if (send(client_fd, buffer, strlen(buffer), 0) < 0) {
