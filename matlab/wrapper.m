@@ -35,7 +35,6 @@ decIn = bi2de(dataIn, 'left-msb');
 % QAM Modulation
 symbols = qammod(decIn, M, 'gray', UnitAveragePower=true);
 
-
 rrc_rx = rcosdesign(rolloff, span, sps_rx,'sqrt');
 rrc_tx = rcosdesign(rolloff, span, sps_tx,'sqrt');
 
@@ -77,39 +76,35 @@ disp(['Number of bit errors: ' num2str(numErrors)])
 disp(['Bit error rate: ' num2str(numErrors / numBits)])
 
 
-% Plot received signal with frame alignment marker
-figure;
-plot(real(rxSignal));
-hold on;
-xline(payload_start, 'r--', 'LineWidth', 2);
-title('Received Signal with Detected Payload Start');
-xlabel('Sample Index');
-ylabel('Amplitude');
-legend('rxSignal (real part)', 'Detected Payload Start');
-grid on;
+% % Plot received signal with frame alignment marker
+% figure;
+% plot(real(rxSignal));
+% hold on;
+% plot(imag(rxSignal));
+% xline(payload_start, 'r--', 'LineWidth', 2);
+% title('Received Signal with Detected Payload Start');
+% xlabel('Sample Index');
+% ylabel('Amplitude');
+% legend('rxSignal (real part)', 'Detected Payload Start');
+% grid on;
 
 % Plot the correlation magnitude
 figure;
 plot(lags, abs(corr));
 hold on;
 xline(lags(peak_idx), 'r--', 'LineWidth', 2);
-title('Cross-Correlation with Matched Preamble');
+title('Cross-correlation of recieved complex waveform with the matched preamble');
 xlabel('Lag');
 ylabel('Correlation Magnitude');
 legend('Cross-Correlation', 'Detected Frame Start');
 grid on;
 
-
-% Trim filtered rxSignal
-delay = (length(rrc_rx)-1)/2;
-% rxSignal_trimmed = rxSignal(delay+1:end);
-rxSignal_trimmed = aligned;
-% Resample trimmed rx
-rxSignal_resampled = resample(rxSignal_trimmed, fs_tx, fs_rx);
-% Normalize resampled and trimmed rx
-rxSignal_resampled = rxSignal_resampled / max(abs(rxSignal_resampled));
+% Resample tx signal
+txSignal = resample(txSignal, sps_rx,sps_tx);
 % Normalize tx
-txSignal_norm = txSignal / max(abs(txSignal));
+txSignal_norm = txSignal / max(abs(txSignal(preamble_len_samples+1:1:end)));
+% Normalize aligned
+aligned_norm = aligned / max(abs(aligned));
 % Plot total
 figure('Name','Total'), subplot(1,2,1)
 pwelch(txSignal,[],[],[],'centered',40e6)
@@ -117,132 +112,22 @@ hold on
 pwelch(rxSignal,[],[],[],'centered',40e6)
 legend("Transmitted", "Recieved");
 subplot(1,2,2)
-plot((0:length(txSignal)-1), real(txSignal_norm));
+plot((1:length(txSignal)+frame_start), [zeros(frame_start, 1); real(txSignal_norm)]);
 hold on
-plot((0:length(txSignal)-1), imag(txSignal_norm));
+plot((1:length(txSignal)+frame_start), [zeros(frame_start, 1); imag(txSignal_norm)]);
 % plot((0:length(rxSignal_resampled)-1), real(rxSignal_resampled));
 % plot((0:length(rxSignal_resampled)-1), imag(rxSignal_resampled));
+plot((1:length(aligned)+payload_start), [zeros(payload_start, 1); real(aligned_norm)]);
+plot((1:length(aligned)+payload_start), [zeros(payload_start, 1); imag(aligned_norm)]);
 
+xline(payload_start, 'r--', 'LineWidth', 2);
 
-
-
-plot(real(rxSignal_resampled));
-plot(imag(rxSignal_resampled));
-
-
-legend("Re(TX)", "Im(TX)", "Re(RX)", "Im(RX)");
+legend("Re(TX)", "Im(TX)", "Re(RX)", "Im(RX)", "Detected Payload Start");
 title("IQ Data")
 grid on
 xlabel('Time (us)')
+
 %% Shutdown
-write(client, "exit");
-response = read(client, client.NumBytesAvailable, 'uint8');
-disp(char(response));
-
-
-
-
-
-%%
-clear all; close all;
-
-fs_rx = 105e6;
-fs_tx = 100e6;
-
-rolloff = 0.25; % RRC roll-off factor
-span = 20; % RRC filter transient lenght
-Rsamp = 100e6; % sample rate
-Rsym = 10e6; % symbol rate
-sps = 10;
-
-% sps_rx = fs_rx / Rsym;
-% sps_tx = fs_tx / Rsym;
-% 
-% rrc_filt = rcosdesign(rolloff, span, Radc/Rsym,'sqrt');
-% rrc_rx = rcosdesign(rolloff, span, sps_rx,'sqrt');
-% rrc_tx = rcosdesign(rolloff, span, sps_tx,'sqrt');
-
-load("mats/rxSignal.mat");
-load("mats/txSignal.mat");
-load("mats/filtered_pilots.mat")
-
-rx_downsampled = rxSignal(1:sps:end);
-pilot_syms = filteredPilot(1:sps:end);
-
-corr = abs(xcorr(rx_downsampled, pilot_syms));
-[~, max_idx] = max(corr);
-frame_start = max_idx - length(pilot_syms) + 1;
-
-synchronized_frame = rxSignal(frame_start : end);
-
-plot((0:length(synchronized_frame)-1), real(synchronized_frame));
-hold on
-plot((0:length(synchronized_frame)-1), imag(synchronized_frame));
-plot((0:length(txSignal)-1), real(txSignal));
-plot((0:length(txSignal)-1), imag(txSignal));
-
-
-% % Trim filtered rxSignal
-% delay = (length(rrc_rx)-1)/2;
-% rxSignal_trimmed = rxSignal(delay+1:end);
-% % Resample trimmed rx
-% rxSignal_resampled = resample(rxSignal_trimmed, fs_tx, fs_rx);
-% % Normalize resampled and trimmed rx
-% rxSignal_resampled = rxSignal_resampled / max(abs(rxSignal_resampled));
-% % Normalize tx
-% txSignal_norm = txSignal / max(abs(txSignal));
-% % Plot total
-% figure('Name','Total'), subplot(1,2,1)
-% pwelch(txSignal,[],[],[],'centered',40e6)
-% hold on
-% pwelch(rxSignal,[],[],[],'centered',40e6)
-% legend("Transmitted", "Recieved");
-% subplot(1,2,2)
-% % plot((0:length(txSignal)-1), real(txSignal_norm));
-% hold on
-% % plot((0:length(txSignal)-1), imag(txSignal_norm));
-
-
-% corr = abs(xcorr(rxSignal, filteredPilot));
-% threshold = 0.8 * max(corr);  % or tune this
-% preamble_locs = find(corr > threshold);
-% preamble_locs = preamble_locs - length(filteredPilot) + 1;  % adjust for lag
-% 
-% payloads = {};  % cell array to store each payload
-% 
-% for i = 1:length(preamble_locs)
-%     start_idx = preamble_locs(i) + length(filteredPilot);
-%     end_idx = start_idx + numSymbols - 1;
-% 
-%     if end_idx <= length(rxSignal)
-%         payload = rxSignal(start_idx:end_idx);
-%         payloads{end+1} = payload;
-%     end
-% end
-
-
-% % Trim filtered rxSignal
-% delay = (length(rrc_rx)-1)/2;
-% rxSignal_trimmed = rxSignal(delay+1:end);
-% % Resample trimmed rx
-% rxSignal_resampled = resample(rxSignal_trimmed, fs_tx, fs_rx);
-% % Normalize resampled and trimmed rx
-% rxSignal_resampled = rxSignal_resampled / max(abs(rxSignal_resampled));
-% % Normalize tx
-% txSignal_norm = txSignal / max(abs(txSignal));
-% % Plot total
-% figure('Name','Total'), subplot(1,2,1)
-% pwelch(txSignal,[],[],[],'centered',40e6)
-% hold on
-% pwelch(rxSignal,[],[],[],'centered',40e6)
-% legend("Transmitted", "Recieved");
-% subplot(1,2,2)
-% % plot((0:length(txSignal)-1), real(txSignal_norm));
-% hold on
-% % plot((0:length(txSignal)-1), imag(txSignal_norm));
-% plot((0:length(rxSignal_resampled)-1), real(rxSignal_resampled));
-% plot((0:length(rxSignal_resampled)-1), imag(rxSignal_resampled));
-% % legend("Re(TX)", "Im(TX)", "Re(RX)", "Im(RX)");
-% title("IQ Data")
-% grid on
-% xlabel('Time (us)')
+% write(client, "exit");
+% response = read(client, client.NumBytesAvailable, 'uint8');
+% disp(char(response));

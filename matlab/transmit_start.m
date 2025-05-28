@@ -9,36 +9,19 @@ filter = 'yes'; % opt filter 'yes' or 'no'
 plotting = 'yes'; % opt plot 'yes' or 'no'
 sps = Rsamp/ Rsym;
 
-
-% Generate random binary data
-M = 16; % modulation order (M-QAM)
-k = log2(M); % number of bits per symbol
-numSymbols = 40; % number of symbols
-numPreambleSymbols = 10;
-numBits = numSymbols*k; % number of bits
-numPreambleBits = numPreambleSymbols*k;
-
-% Modulate signal
-k = log2(M);
+% Modulate order (M-QAM)
+M = 16;
 % Reshape data into k-bit symbols for QAM modulation
-
-% preamble_bits = bitsIn(1:numPreambleBits);
-% payload_bits = bitsIn(numPreambleBits+1:end);
+k = log2(M);
 
 dataIn = reshape(bitsIn, [], k);
-% preamble_bits_reshaped = reshape(preamble_bits, [], k);
-% payload_bits_reshaped = reshape(payload_bits, [], k);
-
 % Convert binary values to decimal values (integers)
 decIn = bi2de(dataIn, 'left-msb');
-% dec_preamble = bi2de(preamble_bits_reshaped, 'left-msb');
-% dec_payload = bi2de(payload_bits_reshaped, 'left-msb');
 % QAM Modulation
 symbols = qammod(decIn, M, 'gray', UnitAveragePower=true);
-% preamble_sym = qammod(dec_preamble, M, 'gray', UnitAveragePower=true);
+% Load in pilot sequence
 load("mats/pilot_sequence.mat");
 preamble_sym = pilotSeq;
-% payload_sym = qammod(dec_payload, M, 'gray', UnitAveragePower=true);
 
 switch filter
     case 'yes'
@@ -97,16 +80,9 @@ end
 response = read(client, client.NumBytesAvailable, 'uint8');
 disp(char(response));
 
-% flush(client);
-
 write(client, int32(length(txSignal)));
 write(client, single(imag(txSignal)));
 write(client, single(real(txSignal)));
-
-%single(txSignal)
-%response = read(client, client.NumBytesAvailable, 'uint8');
-
-%write(client, double(txSignal));
 
 end
 

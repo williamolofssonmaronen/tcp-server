@@ -10,7 +10,6 @@ plotting = 'yes';
 noise = true;
 filter = true;
 
-
 % Signal the server to recieve
 write(client, "recieve");
 
