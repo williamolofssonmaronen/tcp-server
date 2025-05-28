@@ -23,12 +23,8 @@ while (client.NumBytesAvailable == 0)
     pause(0.1);
 end
 
-% Read header: the number of floats to expect (int32)
-%numBytes = read(client, 4, "uint8");
-%numFloats = typecast(uint8(numBytes), 'int32');
-%disp(['Expecting ', num2str(numFloats), ' floats.']);
-
 numFloats = read(client,1,'int32');
+disp(['Expecting ', num2str(numFloats), ' floats.']);
 
 while (client.NumBytesAvailable == 0)
     pause(0.1);

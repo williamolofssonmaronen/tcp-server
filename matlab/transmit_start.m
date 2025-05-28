@@ -1,5 +1,6 @@
 function [txSignal,tx_preamble_waveform, tx_payload_waveform] = transmit_start(client, bitsIn)
 % PARAMETERS
+
 rolloff = 0.25; % RRC roll-off factor
 span = 20; % RRC filter transient lenght
 Rsamp = 100e6; % sample rate

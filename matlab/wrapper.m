@@ -48,8 +48,10 @@ matched_payload = conv(payload_resampled, rrc_rx, 'same');
 transmit_stop(client);
 % Recieve signal
 rxSignal = recieve(client);
+% load("mats/rxSignal.mat");
+% load("mats/txSignal.mat");
 
-delay_samples = 500;  % for example, delay by 500 samples
+delay_samples = 0;  % for example, delay by 500 samples
 rxSignal = rxSignal(:);
 rxSignal = [zeros(delay_samples, 1); rxSignal];
 
@@ -64,7 +66,6 @@ scatterplot(aligned_downsampled);
 
 % QAM Demodulation
 dataSymbolsOut = qamdemod(aligned_downsampled, M, 'gray', UnitAveragePower=true);
-% dataSymbolsOut = qamdemod(rxSymbols, M, 'gray', UnitAveragePower=true);
 % convert decimal values back to binary
 dataOutMatrix = de2bi(dataSymbolsOut, k, 'left-msb');
 % reshape binary matrix to a vector
