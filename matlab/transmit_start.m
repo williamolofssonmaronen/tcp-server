@@ -1,6 +1,5 @@
 function [txSignal,tx_preamble_waveform, tx_payload_waveform] = transmit_start(client, bitsIn)
 % PARAMETERS
-M = 16; % Modulation order
 rolloff = 0.25; % RRC roll-off factor
 span = 20; % RRC filter transient lenght
 Rsamp = 100e6; % sample rate
@@ -25,16 +24,6 @@ preamble_sym = pilotSeq;
 
 switch filter
     case 'yes'
-        % % up-sample
-        % symbolsUp = upsample([symbols; preamble_sym], Rsamp/Rsym);
-        % preamble_upsampled = upsample(preamble_sym, Rsamp/Rsym);
-        % % pulse shaping
-        % txSignal = conv(rrc_filt,symbolsUp);
-        % tx_preamble_waveform = conv(rrc_filt,preamble_upsampled);
-        % % tx_preamble_waveform = upfirdn(preamble_sym, rrc_filt, Rsamp/Rsym, 1);
-        % % tx_payload_waveform = upfirdn(payload_sym, rrc_filt, Rsamp/Rsym, 1);
-        % tx_payload_waveform = upfirdn(symbols, rrc_filt, Rsamp/Rsym, 1);
-
         % Create RRC filter
         rrc_filt = rcosdesign(rolloff, span, Rsamp/Rsym,"sqrt");
         filter_delay = span * sps / 2;

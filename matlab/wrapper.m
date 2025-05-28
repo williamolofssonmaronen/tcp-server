@@ -58,7 +58,7 @@ rxSignal = [zeros(delay_samples, 1); rxSignal];
 frame_start = lags(peak_idx);
 preamble_len_samples = 63 * sps_rx;
 payload_start = frame_start + preamble_len_samples;
-aligned = rxSignal(payload_start+1:end);
+aligned = rxSignal(payload_start+1:payload_start+numSymbols*sps_rx);
 aligned_downsampled = aligned(1:sps_rx:end);
 scatterplot(aligned_downsampled);
 
@@ -74,19 +74,6 @@ numErrors = sum(data_bits ~= dataOut);
 % numErrors = sum(bitsIn ~= dataOut);
 disp(['Number of bit errors: ' num2str(numErrors)])
 disp(['Bit error rate: ' num2str(numErrors / numBits)])
-
-
-% % Plot received signal with frame alignment marker
-% figure;
-% plot(real(rxSignal));
-% hold on;
-% plot(imag(rxSignal));
-% xline(payload_start, 'r--', 'LineWidth', 2);
-% title('Received Signal with Detected Payload Start');
-% xlabel('Sample Index');
-% ylabel('Amplitude');
-% legend('rxSignal (real part)', 'Detected Payload Start');
-% grid on;
 
 % Plot the correlation magnitude
 figure;
@@ -115,8 +102,6 @@ subplot(1,2,2)
 plot((1:length(txSignal)+frame_start), [zeros(frame_start, 1); real(txSignal_norm)]);
 hold on
 plot((1:length(txSignal)+frame_start), [zeros(frame_start, 1); imag(txSignal_norm)]);
-% plot((0:length(rxSignal_resampled)-1), real(rxSignal_resampled));
-% plot((0:length(rxSignal_resampled)-1), imag(rxSignal_resampled));
 plot((1:length(aligned)+payload_start), [zeros(payload_start, 1); real(aligned_norm)]);
 plot((1:length(aligned)+payload_start), [zeros(payload_start, 1); imag(aligned_norm)]);
 
